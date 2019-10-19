@@ -1,3 +1,4 @@
+import sys
 from itertools import combinations
 import copy
 
@@ -213,169 +214,62 @@ pickup_delivery_time_in = [[0, 0],
                            [2, 2],
                            [0, 0]]
 
-tabu_list = []
+number_of_vehicle = 12
+tabu_itrs = 20
 aspiration = 100
-tabu_itrs =20
-number_of_vehicle=12
-# cost minimization function --- min(t[i][j]+wait_time[j])
-def get_heuristic(src, dest, service_start_time):
-    wait = get_earliest_service_time(dest) - service_start_time - get_distance(src, dest) - get_pickup_time(src
-            ) - get_delivery_time(src)
-    wait = wait if wait > 0 else 0
-    print('waiting time : {0} Distance : {1}'.format(wait, get_distance(src, dest)))
-    return get_distance(src, dest) + wait
+sn = 0
+retention = 7
+en = len(distance_mtrx) - 1
+unserviced = list(range(1, en + 1))
+tabu_list = []
+def remove_us(c):
+    if c != en and c in unserviced:
+        unserviced.remove(c)
 
-def generate__initial_solution1():
-    numOfV = number_of_vehicle
-    setOfV = range(1, numOfV + 1)
-    routes = [[]]  # zero indexed route kept empty to maintain meaningful reference
-    service_start_time = [[]]
-    cost_data = [[]]
-    unserviced = list(range(1, len(distance_mtrx) - 1))
+def get_cost(prev, c, sst_prev, ispdl):
+    d = distance_mtrx[prev][c]
+    pd = pickup_delivery_time_in[prev][0] + pickup_delivery_time_in[prev][1] if not ispdl else 0
+    dl = sst_prev + pd + d - service_time_in[c][1] if sst_prev + pd + d - service_time_in[c][1] > 0 else 0
+    w = service_time_in[c][0] - sst_prev - pd - d if service_time_in[c][0] - sst_prev - pd - d > 0else 0
+    sst = sst_prev + pd + d + w
+    isd = True if dl > 0 else False
+    return d, w, dl, d + w + dl, sst, isd
+
+
+def get_initial_solution():
+    rs = []
     k = 1
-    while len(unserviced) > 0 and k in setOfV:  # Vehicle level loop
-        routes.append([0])
-        service_start_time.append([0])
-        cost_data.append([0])
-        best_nbr = 0
-        minim = 1000000
-        end_node = len(distance_mtrx) - 1
-        no_progress = False
-        route_index = 1
-        while len(
-                unserviced) > 0 and not no_progress:  # Route level loop for vehicle gives route for vehicle when completed
+    sst_prev = 0
+    ispdl = False
+    bn = 0
+    bc = 0
+    while k in range(1, number_of_vehicle + 1):
+        prev = 0
+        rt = [0]
 
-            visiting = best_nbr
-            print('----------------------------------------------------------------')
-            print('starting looking up best next node for : {0}'.format(visiting))
-            no_progress = False
-            minim = 100000
-            for i in range(1, len(distance_mtrx) - 1):  # finding best neighbour
-                if i == visiting or i not in unserviced:
-                    no_progress = True
+        while not prev == en:
+            minim = 99999
+            for c in unserviced:
+                if prev == en:
+                    break
+                if prev == 0 and c == en:
                     continue
-                no_progress = False
-                print('checking cost for : {0}'.format(i))
-                cost1 = get_heuristic(visiting, i, service_start_time[k][route_index - 1])
-                if int(cost1) < int(minim) and i not in routes[k] and i != end_node and i in unserviced:
-                    minim = cost1
-                    if len(cost_data[k]) < route_index + 1:
-                        cost_data[k].append(0)
-                    if len(routes[k]) < route_index + 1:
-                        routes[k].append(0)
-                    if len(service_start_time[k]) < route_index + 1:
-                        service_start_time[k].append(0)
-                    cost_data[k][route_index] = minim
-                    routes[k][route_index] = i
-                    best_nbr = i
-                    print('now best next node for : {0} is {1}'.format(visiting, i))
-                    service_start_time[k][route_index] = get_service_start_time(i, service_start_time[k][
-                        route_index - 1], visiting)
-            # print(no_progress)
-            if best_nbr != 0:
-                unserviced.remove(best_nbr)
-            route_index = route_index + 1
-        routes[k].append(end_node)
-        cost_data[k].append(distance_mtrx[routes[k][-2]][end_node])
-        k = k + 1
-
-    # if len(unserviced) > 0:
-    #     print('making route for customer which are not serviced due to delay the route will be used during tabu search')
-    #     routes.append([0])
-    #     for i in unserviced:
-    #         routes[k].append(i)
-    #     routes[k].append(len(distance_mtrx) - 1)
-    #     print(routes[k])
-
-    # for route in routes:
-    #     if is_empty_route(route):
-    #         print('removing empty routes that is from start depot to end depot only')
-    #         cost_data.remove(cost_data[routes.index(route)])
-    #         routes.remove(route)
-    return cost_data, routes
-
-def generate__initial_solution():
-    numOfV = number_of_vehicle
-    setOfV = range(1, numOfV + 1)
-    routes = [[]]  # zero indexed route kept empty to maintain meaningful reference
-    service_start_time = [[]]
-    cost_data = [[]]
-    unserviced = list(range(1, len(distance_mtrx) - 1))
-    k = 1
-    while len(unserviced) > 0 and k in setOfV:  # Vehicle level loop
-        routes.append([0])
-        service_start_time.append([0])
-        cost_data.append([0])
-        best_nbr = 0
-        minim = 1000000
-        end_node = len(distance_mtrx) - 1
-        no_progress = False
-        route_index = 1
-        while len(
-                unserviced) > 0 and not no_progress:  # Route level loop for vehicle gives route for vehicle when completed
-
-            visiting = best_nbr
-            print('----------------------------------------------------------------')
-            print('starting looking up best next node for : {0}'.format(visiting))
-            no_progress = False
-            minim = 100000
-            for i in range(1, len(distance_mtrx) - 1):  # finding best neighbour
-                if i == visiting or not is_servisable(visiting, i, service_start_time[k][
-                    route_index - 1]) or i not in unserviced:
-                    no_progress = True
+                if k == number_of_vehicle and len(unserviced) > 1 and c == en:
                     continue
-                no_progress = False
-                print('checking cost for : {0}'.format(i))
-                cost1 = get_heuristic(visiting, i, service_start_time[k][route_index - 1])
-                if int(cost1) < int(minim) and i not in routes[k] and i != end_node and i in unserviced:
-                    minim = cost1
-                    if len(cost_data[k]) < route_index + 1:
-                        cost_data[k].append(0)
-                    if len(routes[k]) < route_index + 1:
-                        routes[k].append(0)
-                    if len(service_start_time[k]) < route_index + 1:
-                        service_start_time[k].append(0)
-                    cost_data[k][route_index] = minim
-                    routes[k][route_index] = i
-                    best_nbr = i
-                    print('now best next node for : {0} is {1}'.format(visiting, i))
-                    service_start_time[k][route_index] = get_service_start_time(i, service_start_time[k][
-                        route_index - 1], visiting)
-            # print(no_progress)
-            if best_nbr != 0:
-                unserviced.remove(best_nbr)
-            route_index = route_index + 1
-        routes[k].append(end_node)
-        cost_data[k].append(distance_mtrx[routes[k][-2]][end_node])
-        k = k + 1
-
-    if len(unserviced) > 0:
-        print('making route for customer which are not serviced due to delay the route will be used during tabu search')
-        routes.append([0])
-        for i in unserviced:
-            routes[k].append(i)
-        routes[k].append(len(distance_mtrx) - 1)
-        print(routes[k])
-
-    for route in routes:
-        if is_empty_route(route):
-            print('removing empty routes that is from start depot to end depot only')
-            cost_data.remove(cost_data[routes.index(route)])
-            routes.remove(route)
-    return cost_data, routes
-
-
-def is_servisable(src, dest, src_service_start_time):
-    if get_distance(src, dest) + src_service_start_time + get_pickup_time(src) + get_delivery_time(
-            src) > get_latest_service_time(dest):
-        return False
-    return True
-
-
-def get_delay(src, dest, si_src):
-    return service_time_in[dest][1] - distance_mtrx[src][dest] - pickup_delivery_time_in[src][0] - \
-           pickup_delivery_time_in[src][1] - si_src
-
+                d, w, dl, cost, sst, isd = get_cost(prev, c, sst_prev, ispdl)
+                cost = cost +(dl*39)
+                if cost < minim:
+                    bn = c
+                    bc = cost
+                    minim = cost
+                    sst_prev = sst
+                    ispdl = isd
+            rt.append(bn)
+            prev = bn
+            remove_us(bn)
+        rs.append(rt)
+        k += 1
+    return rs
 
 def get_exchange_neighbour(soln):
     neighbours = []
@@ -396,8 +290,8 @@ def get_exchange_neighbour(soln):
                 _tmp[idx1] = _c0
                 _tmp[idx2] = _c1
                 if is_move_allowed((j, i, idx1, idx2), soln, _tmp, 3):
-                    neighbours.append((_tmp, get_solution_cost(_tmp), (3, j, i, idx2, idx1, 3)))
-                    print('exchanging {0} from {1} to {2} from {3} resulting solution {4}'.format(j, soln[idx2], i, soln[idx1], _tmp))
+                    neighbours.append((_tmp, get_solution_actual_cost(_tmp), (3, j, i, idx2, idx1, retention)))
+                    #print('exchanging {0} from {1} to {2} from {3} resulting solution {4}'.format(j, soln[idx2], i, soln[idx1], _tmp))
 
         for i in combo[1][:-1]:
             for j in combo[0][:-1]:
@@ -413,12 +307,12 @@ def get_exchange_neighbour(soln):
                 _tmp[idx1] = _c0
                 _tmp[idx2] = _c1
                 if is_move_allowed((j, i, idx1, idx2), soln, _tmp, 3):
-                    neighbours.append((_tmp, get_solution_cost(_tmp), (3, j, i, idx2, idx1, 3)))
-                    print('exchanging {0} from {1} to {2} from {3} resulting solution {4}'.format(j, soln[idx2], i, soln[idx1], _tmp))
+                    neighbours.append((_tmp, get_solution_actual_cost(_tmp), (3, j, i, idx2, idx1, retention)))
+                    #print('exchanging {0} from {1} to {2} from {3} resulting solution {4}'.format(j, soln[idx2], i, soln[idx1], _tmp))
 
     # print("{0} number of Neighbours after Exchange {1}".format(len(neighbours), neighbours))
     neighbours.sort(key=lambda x: x[1][-1])
-    print("{0} number of sorted Neighbours after exchange {1}".format(len(neighbours), neighbours))
+    #print("{0} number of sorted Neighbours after exchange {1}".format(len(neighbours), neighbours))
     return neighbours[0] if len(neighbours) > 0 else -1;
 
 
@@ -439,8 +333,8 @@ def get_relocate_neighbour(soln):
                 _tmp[idx1] = _c0
                 _tmp[idx2] = _c1
                 if is_move_allowed((j, i, idx1, idx2), soln, _tmp, 1):
-                    print('relocating {0} from {1} to {2} after {3} resulting solution {4}'.format(j, soln[idx2], soln[idx1], i, _tmp))
-                    neighbours.append((_tmp, get_solution_cost(_tmp), (1, j, i, idx2, idx1, 3)))
+                    # print('relocating {0} from {1} to {2} after {3} resulting solution {4}'.format(j, soln[idx2], soln[idx1], i, _tmp))
+                    neighbours.append((_tmp, get_solution_actual_cost(_tmp), (1, j, i, idx2, idx1, retention)))
 
         for i in combo[1][:-1]:
             for j in combo[0][:-1]:
@@ -456,81 +350,111 @@ def get_relocate_neighbour(soln):
                 _tmp[idx1] = _c0
                 _tmp[idx2] = _c1
                 if is_move_allowed((j, i, idx1, idx2), soln, _tmp, 1):
-                    neighbours.append((_tmp, get_solution_cost(_tmp), (1, j, i, idx2, idx1, 3)))
-                    print('relocating {0} from {1} to {2} after {3} resulting solution {4}'.format(j, soln[idx2], soln[idx1], i, _tmp))
+                    neighbours.append((_tmp, get_solution_actual_cost(_tmp), (1, j, i, idx2, idx1, retention)))
+                    # print('relocating {0} from {1} to {2} after {3} resulting solution {4}'.format(j, soln[idx2], soln[idx1], i, _tmp))
 
     # print("{0} number of Neighbours after relocation {1}".format(len(neighbours), neighbours))
     neighbours.sort(key=lambda x: x[1][-1])
-    print("{0} number of sorted Neighbours after relocation {1}".format(len(neighbours), neighbours))
+    #print("{0} number of sorted Neighbours after relocation {1}".format(len(neighbours), neighbours))
     return neighbours[0]
+
+
+def get_shuffle_neighbours(soln):
+    neighbours = []
+    for r in soln:
+        for i in r[1:-1]:
+            for j in r[1:-1]:
+                _tmp=copy.deepcopy(soln)
+                _r=copy.deepcopy(r)
+                idx=_tmp.index(r)
+                if i == j:
+                    continue
+                tmp = j
+                idxi=r.index(i)
+                _r[r.index(j)]=i
+                _r[idxi] = j
+                _tmp[idx] = _r
+                if is_move_allowed((j, i, idx, idx), soln, _tmp, 2):
+                    neighbours.append((_tmp, get_solution_actual_cost(_tmp), (2, j, i, idx, idx, retention)))
+                    # print("changing position of {0} with {1} in route {2} resulting {3}".format(i, j, r, _r))
+    neighbours.sort(key=lambda x: x[1][-1])
+    #print("{0} number of sorted Neighbours after shuffling {1}".format(len(neighbours), neighbours))
+    return neighbours[0] if len(neighbours)>0 else -1
+
 
 
 def get_neighbours(op, soln):
     if op == 1:
         return get_relocate_neighbour(soln)
+    elif op == 2:
+        return get_shuffle_neighbours(soln)
     elif op == 3:
         return get_exchange_neighbour(soln)
 
 
 def get_solution_cost(soln: list):
-    t = 0
+    cost = 0
     wait = 0
     delay = 0
     serviced = 0
     unserviced = 0
     distance = 0
+    details =[]
     for route in soln:
         prev = 0
+        prev_sst=0
+        details_tmp=[]
         is_delayed = False
-        for customer in route[:-1]:
-            pick_delivery_time = get_pickup_time(prev) + get_delivery_time(prev) if(not is_delayed) else 0
-            distance += get_distance(prev, customer)
-            t = t + get_distance(prev, customer) + pick_delivery_time
-            curr_wait=((get_earliest_service_time(customer) - t) if (get_earliest_service_time(
-                customer) - t) > 0 else 0)
-            wait = wait + curr_wait
-            curr_delay = ((t - get_latest_service_time(customer)) if (t - get_latest_service_time(
-                customer)) > 0 else 0)
-            delay = delay + (curr_delay*20)
-            if curr_wait == 0 and curr_delay > 1:
-                is_delayed=True
+        for customer in route[1:]:
+            d, w, dl, c, sst, isd=get_cost(prev,customer,prev_sst,is_delayed)
+            prev_sst=sst
+            is_delayed=isd
+            prev=customer
+            if isd:
                 unserviced += 1
             else:
-                serviced +=1
-            prev = customer
+                serviced += 1
+            distance += d
+            delay += dl
+            wait += w
+            cost += c
+            details_tmp.append((w,dl,sst))
+        details.append(details_tmp)
 
-    return distance, delay, wait, distance + delay + wait
+    return distance, delay, wait, cost,serviced,unserviced,details
 
 
 def get_solution_actual_cost(soln: list):
+    cost = 0
     wait = 0
     delay = 0
     serviced = 0
     unserviced = 0
     distance = 0
+    details = []
     for route in soln:
         prev = 0
-        t = 0
+        prev_sst = 0
+        details_tmp = []
         is_delayed = False
-        for customer in route:
-            pick_delivery_time = get_pickup_time(prev) + get_delivery_time(prev) if(not is_delayed) else 0
-            distance += get_distance(prev, customer)
-            t = t + get_distance(prev, customer) + pick_delivery_time
-            curr_wait=((get_earliest_service_time(customer) - t) if (get_earliest_service_time(
-                customer) - t) > 0 else 0)
-            t = t + curr_wait
-            wait = wait + curr_wait
-            curr_delay = ((t - get_latest_service_time(customer)) if (t - get_latest_service_time(
-                customer)) > 0 else 0)
-            delay = delay + curr_delay
-            if curr_wait == 0 and curr_delay > 1:
-                is_delayed=True
+        for customer in route[1:]:
+            d, w, dl, c, sst, isd = get_cost(prev, customer, prev_sst, is_delayed)
+            c = c + (dl * 39)
+            prev_sst = sst
+            is_delayed = isd
+            prev = customer
+            if isd:
                 unserviced += 1
             else:
-                serviced +=1
-            prev = customer
+                serviced += 1
+            distance += d
+            delay += dl
+            wait += w
+            cost += c
+            details_tmp.append((w, dl, sst))
+        details.append(details_tmp)
 
-    return distance, delay, wait, distance + delay + wait
+    return distance, delay, wait, cost
 
 def get_distance_for_solution(soln: list):
     d=0
@@ -546,26 +470,27 @@ def get_distance_for_solution(soln: list):
 
 def tabu_search(routes: list, itrations):
     best_solution_ever=routes
-    best_cost_ever=get_solution_cost(routes)
+    best_cost_ever=get_solution_actual_cost(routes)
     best_solution_ever_not_chaned_itr_count = 0
     best_soln = routes
     best_cost = ()
+    tmp12=[]
     global tabu_list
     for i in range(itrations - 1):
+        tmp12=[]
         if best_solution_ever_not_chaned_itr_count > 7:
             break
-        _sol1 = get_neighbours(1, best_soln)
-        _sol2 = get_neighbours(3, best_soln)
-        if _sol1 == -1 or _sol2 == -1:
+        tmp12.append(get_neighbours(1, best_soln))
+        tmp12.append(get_neighbours(3, best_soln))
+        tmp11=get_neighbours(2, best_soln)
+        if not tmp11 == -1:
+            tmp12.append(tmp11)
+        tmp12.sort(key=lambda x: x[1][-1])
+        if tmp12[1] == -1  or tmp12[0] == -1:
             break
-        if _sol1[1][-1] < _sol2[1][-1]:
-            best_soln = _sol1[0]
-            best_cost = _sol1[1]
-            tabu_list.append(TabuListClass(_sol1[2][0], _sol1[2][1:-1], _sol1[2][-1]))
-        else:
-            best_soln = _sol2[0]
-            best_cost = _sol2[1]
-            tabu_list.append(TabuListClass(_sol1[2][0], _sol1[2][1:-1], _sol1[2][-1]))
+        best_soln = tmp12[0][0]
+        best_cost = tmp12[0][1]
+        tabu_list.append(TabuListClass(tmp12[0][2][0], tmp12[0][2][1:-1], tmp12[0][2][-1]))
 
         if best_cost_ever[-1] > best_cost[-1]:
             best_cost_ever = best_cost
@@ -689,8 +614,8 @@ class TabuListClass:
 def is_move_allowed(move, soln_prev, soln_curr, op):
     if len(tabu_list) < 1:
         return True
-    cost_prev = get_solution_cost(soln_prev)[-1]
-    cost_curr = get_solution_cost(soln_curr)[-1]
+    cost_prev = get_solution_actual_cost(soln_prev)[-1]
+    cost_curr = get_solution_actual_cost(soln_curr)[-1]
     if cost_prev-cost_curr > aspiration:
         return not contains(tabu_list, lambda x: x.find(move, True, op))
     else:
@@ -703,11 +628,17 @@ def iteration_update_tabu_list():
             tabu_list.remove(i)
 
 
+def print2D(arr):
+    for row in arr:
+        print(row)
+
+# log = open("myprog.log", "a")
+# sys.stdout = log
 
 #read_input_file("vrptw_test_4_nodes.txt")
-cost, routes = generate__initial_solution1()
-print("Best solution: {0}, with total cost: {1}".format(routes, cost))
-routes.remove([])
+routes = get_initial_solution()
+print("Best solution: {0}".format(routes))
+#routes.remove([])
 best_soln, best_cost = tabu_search(routes, tabu_itrs)
 print("solution is : {0} with costs : {1}".format(best_soln, best_cost))
 best_cost = get_solution_actual_cost(best_soln)
@@ -716,9 +647,16 @@ for route in best_soln:
     print("Route{0} is: {1}".format(index1, route))
     index1 += 1
 
-print("total distance: {0}".format(best_cost[0]))
-print("total waiting: {0}".format(best_cost[1]))
-print("total delay: {0}".format(best_cost[2]))
-print("total cost: {0}".format(best_cost[3]))
+distance, delay, wait, cost,serviced,unserviced,details=get_solution_cost(best_soln)
+
+print("total distance: {0}".format(distance))
+print("total waiting: {0}".format(wait))
+print("total delay: {0}".format(delay))
+print("total cost: {0}".format(cost))
+print("Total services customers: {0}".format(serviced))
+print("Total unserviced customers: {0}".format(unserviced))
 print("route wise Distance without pickup /delivery is {0}".format(get_distance_for_solution(best_soln)))
-print(get_solution_actual_cost(best_soln))
+
+print("Below is the route details for route [(wait time,delay time,service start time)] each () have details for each "
+      "customer and each row represents a route")
+print2D(details)
