@@ -161,58 +161,58 @@ service_time_in = [[0, 150],
                    [480, 500],
                    [0, 720]]
 
-pickup_delivery_time_in = [[0, 0],
-                           [2, 1],
-                           [2, 1],
-                           [2, 2],
-                           [4, 3],
-                           [2, 2],
-                           [3, 2],
-                           [4, 3],
-                           [4, 3],
-                           [3, 2],
-                           [3, 2],
-                           [3, 3],
-                           [4, 2],
-                           [3, 2],
-                           [2, 3],
-                           [3, 3],
-                           [3, 2],
-                           [2, 3],
-                           [4, 4],
-                           [3, 3],
-                           [3, 2],
-                           [2, 1],
-                           [4, 3],
-                           [5, 2],
-                           [3, 3],
-                           [4, 2],
-                           [5, 3],
-                           [3, 2],
-                           [4, 3],
-                           [4, 2],
-                           [5, 2],
-                           [3, 2],
-                           [3, 3],
-                           [2, 3],
-                           [4, 4],
-                           [5, 3],
-                           [4, 2],
-                           [5, 3],
-                           [4, 3],
-                           [6, 5],
-                           [4, 3],
-                           [6, 4],
-                           [3, 3],
-                           [5, 2],
-                           [6, 3],
-                           [4, 2],
-                           [3, 2],
-                           [2, 2],
-                           [4, 3],
-                           [3, 2],
-                           [2, 2],
-                           [0, 0]]
+pickup_delivery_time_in = [[0, 0, 0],
+                           [2, 1, 1],
+                           [2, 1, 1],
+                           [2, 2, 2],
+                           [4, 3, 3],
+                           [2, 2, 2],
+                           [3, 2, 2],
+                           [4, 3, 3],
+                           [4, 3, 3],
+                           [3, 2, 2],
+                           [3, 2, 2],
+                           [3, 3, 3],
+                           [4, 2, 2],
+                           [3, 2, 2],
+                           [2, 3, 3],
+                           [3, 3, 3],
+                           [3, 2, 2],
+                           [2, 3, 3],
+                           [4, 4, 4],
+                           [3, 3, 3],
+                           [3, 2, 2],
+                           [2, 1, 1],
+                           [4, 3, 3],
+                           [5, 2, 2],
+                           [3, 3, 3],
+                           [4, 2, 2],
+                           [5, 3, 3],
+                           [3, 2, 2],
+                           [4, 3, 3],
+                           [4, 2, 2],
+                           [5, 2, 2],
+                           [3, 2, 2],
+                           [3, 3, 3],
+                           [2, 3, 3],
+                           [4, 4, 4],
+                           [5, 3, 3],
+                           [4, 2, 2],
+                           [5, 3, 3],
+                           [4, 3, 3],
+                           [6, 5, 5],
+                           [4, 3, 3],
+                           [6, 4, 4],
+                           [3, 3, 3],
+                           [5, 2, 2],
+                           [6, 3, 3],
+                           [4, 2, 2],
+                           [3, 2, 2],
+                           [2, 2, 2],
+                           [4, 3, 3],
+                           [3, 2, 2],
+                           [2, 2, 2],
+                           [0, 0, 0]]
 
 number_of_vehicle = 8
 tabu_itrs = 40
@@ -222,12 +222,12 @@ retention = 7
 en = len(distance_mtrx) - 1
 unserviced = list(range(1, en + 1))
 tabu_list = []
-logging=False
+logging = False
+
 
 def remove_us(c):
     if c != en and c in unserviced:
         unserviced.remove(c)
-
 
 
 '''
@@ -247,14 +247,16 @@ returns:
 5. sst                      -- Service start time
 6. isd                      -- is delayed 
 '''
+
+
 def get_cost(prev, c, sst_prev, ispdl):
     d = distance_mtrx[prev][c]
-    pd = pickup_delivery_time_in[prev][0] + pickup_delivery_time_in[prev][1] if not ispdl else 0
+    pd = pickup_delivery_time_in[prev][0] + pickup_delivery_time_in[prev][1]+pickup_delivery_time_in[prev][2] if not ispdl else 0
     dl = sst_prev + pd + d - service_time_in[c][1] if sst_prev + pd + d - service_time_in[c][1] > 0 else 0
-    w = service_time_in[c][0] - sst_prev - pd - d if service_time_in[c][0] - sst_prev - pd - d > 0else 0
+    w = service_time_in[c][0] - sst_prev - pd - d if service_time_in[c][0] - sst_prev - pd - d > 0 else 0
     sst = sst_prev + pd + d + w
     isd = True if dl > 0 else False
-    return d, w, dl, (w/4)+(dl/4)+(dl), sst, isd
+    return d, w, dl, (w / 4) + (dl / 4) + (d), sst, isd
 
 
 '''
@@ -263,6 +265,8 @@ Greedy algorithm to find initial solution
 NO parameters passed
 returns: solution with route in 2D array like solution : [[route-1][route-2].....] 
 '''
+
+
 def get_initial_solution():
     rs = []
     k = 1
@@ -304,6 +308,8 @@ to one node from other solution
 
 returns the all neighbouring solution sorted with cost in ascending order
 '''
+
+
 def get_exchange_neighbour(soln):
     neighbours = []
     for combo in list(combinations(soln, 2)):
@@ -324,7 +330,8 @@ def get_exchange_neighbour(soln):
                 _tmp[idx2] = _c1
                 if is_move_allowed((j, i, idx1, idx2), soln, _tmp, 3):
                     neighbours.append((_tmp, get_solution_actual_cost(_tmp), (3, j, i, idx2, idx1, retention)))
-                    print_log('exchanging {0} from {1} to {2} from {3} resulting solution {4}'.format(j, soln[idx2], i, soln[idx1], _tmp))
+                    print_log('exchanging {0} from {1} to {2} from {3} resulting solution {4}'.format(j, soln[idx2], i,
+                                                                                                      soln[idx1], _tmp))
 
         for i in combo[1][:-1]:
             for j in combo[0][:-1]:
@@ -343,7 +350,8 @@ def get_exchange_neighbour(soln):
                 _tmp[idx2] = _c1
                 if is_move_allowed((j, i, idx1, idx2), soln, _tmp, 3):
                     neighbours.append((_tmp, get_solution_actual_cost(_tmp), (3, j, i, idx2, idx1, retention)))
-                    print_log('exchanging {0} from {1} to {2} from {3} resulting solution {4}'.format(j, soln[idx2], i, soln[idx1], _tmp))
+                    print_log('exchanging {0} from {1} to {2} from {3} resulting solution {4}'.format(j, soln[idx2], i,
+                                                                                                      soln[idx1], _tmp))
 
     # print("{0} number of Neighbours after Exchange {1}".format(len(neighbours), neighbours))
     neighbours.sort(key=lambda x: x[1][-1])
@@ -357,6 +365,8 @@ in to other solution
 
 returns the all neighbouring solution sorted with cost in ascending order
 '''
+
+
 def get_relocate_neighbour(soln):
     neighbours = []
     for combo in list(combinations(soln, 2)):
@@ -374,7 +384,9 @@ def get_relocate_neighbour(soln):
                 _tmp[idx1] = _c0
                 _tmp[idx2] = _c1
                 if is_move_allowed((j, i, idx1, idx2), soln, _tmp, 1):
-                    print_log('relocating {0} from {1} to {2} after {3} resulting solution {4}'.format(j, soln[idx2], soln[idx1], i, _tmp))
+                    print_log('relocating {0} from {1} to {2} after {3} resulting solution {4}'.format(j, soln[idx2],
+                                                                                                       soln[idx1], i,
+                                                                                                       _tmp))
                     neighbours.append((_tmp, get_solution_actual_cost(_tmp), (1, j, i, idx2, idx1, retention)))
 
         for i in combo[1][:-1]:
@@ -392,7 +404,9 @@ def get_relocate_neighbour(soln):
                 _tmp[idx2] = _c1
                 if is_move_allowed((j, i, idx1, idx2), soln, _tmp, 1):
                     neighbours.append((_tmp, get_solution_actual_cost(_tmp), (1, j, i, idx2, idx1, retention)))
-                    print_log('relocating {0} from {1} to {2} after {3} resulting solution {4}'.format(j, soln[idx2], soln[idx1], i, _tmp))
+                    print_log('relocating {0} from {1} to {2} after {3} resulting solution {4}'.format(j, soln[idx2],
+                                                                                                       soln[idx1], i,
+                                                                                                       _tmp))
 
     # print("{0} number of Neighbours after relocation {1}".format(len(neighbours), neighbours))
     neighbours.sort(key=lambda x: x[1][-1])
@@ -406,19 +420,21 @@ Following function takes solution as input and returns the neighbouring solution
 
 returns the all neighbouring solution sorted with cost in ascending order
 '''
+
+
 def get_shuffle_neighbours(soln):
     neighbours = []
     for r in soln:
         for i in r[1:-1]:
             for j in r[1:-1]:
-                _tmp=copy.deepcopy(soln)
-                _r=copy.deepcopy(r)
-                idx=_tmp.index(r)
+                _tmp = copy.deepcopy(soln)
+                _r = copy.deepcopy(r)
+                idx = _tmp.index(r)
                 if i == j:
                     continue
                 tmp = j
-                idxi=r.index(i)
-                _r[r.index(j)]=i
+                idxi = r.index(i)
+                _r[r.index(j)] = i
                 _r[idxi] = j
                 _tmp[idx] = _r
                 if is_move_allowed((j, i, idx, idx), soln, _tmp, 2):
@@ -426,13 +442,14 @@ def get_shuffle_neighbours(soln):
                     print_log("changing position of {0} with {1} in route {2} resulting {3}".format(i, j, r, _r))
     neighbours.sort(key=lambda x: x[1][-1])
     print_log("{0} number of sorted Neighbours after shuffling {1}".format(len(neighbours), neighbours))
-    return neighbours[0] if len(neighbours)>0 else -1
-
+    return neighbours[0] if len(neighbours) > 0 else -1
 
 
 '''
 wrapper for above three functions
 '''
+
+
 def get_neighbours(op, soln):
     if op == 1:
         return get_relocate_neighbour(soln)
@@ -440,7 +457,6 @@ def get_neighbours(op, soln):
         return get_shuffle_neighbours(soln)
     elif op == 3:
         return get_exchange_neighbour(soln)
-
 
 
 '''
@@ -459,6 +475,8 @@ Returns :
 7. details      -- route details for route [(wait time,delay time,service start time)] each () have details for each 
                    customer and each row represents a route 
 '''
+
+
 def get_solution_cost(soln: list):
     cost = 0
     wait = 0
@@ -466,17 +484,17 @@ def get_solution_cost(soln: list):
     serviced = 0
     unserviced = 0
     distance = 0
-    details =[]
+    details = []
     for route in soln:
         prev = 0
-        prev_sst=0
-        details_tmp=[]
+        prev_sst = 0
+        details_tmp = []
         is_delayed = False
         for customer in route[1:]:
-            d, w, dl, c, sst, isd=get_cost(prev,customer,prev_sst,is_delayed)
-            prev_sst=sst
-            is_delayed=isd
-            prev=customer
+            d, w, dl, c, sst, isd = get_cost(prev, customer, prev_sst, is_delayed)
+            prev_sst = sst
+            is_delayed = isd
+            prev = customer
             if isd:
                 unserviced += 1
             else:
@@ -485,11 +503,10 @@ def get_solution_cost(soln: list):
             delay += dl
             wait += w
             cost += c
-            details_tmp.append((w,dl,sst))
+            details_tmp.append((w, dl, sst))
         details.append(details_tmp)
 
-    return distance, delay, wait, cost,serviced,unserviced,details
-
+    return distance, delay, wait, cost, serviced, unserviced, details
 
 
 '''
@@ -505,6 +522,8 @@ Returns :
 3. wait         -- wait time
 4. cost         -- cost 
 '''
+
+
 def get_solution_actual_cost(soln: list):
     cost = 0
     wait = 0
@@ -520,7 +539,7 @@ def get_solution_actual_cost(soln: list):
         is_delayed = False
         for customer in route[1:]:
             d, w, dl, c, sst, isd = get_cost(prev, customer, prev_sst, is_delayed)
-            #c = c + (dl * 39)
+            # c = c + (dl * 39)
             prev_sst = sst
             is_delayed = isd
             prev = customer
@@ -541,42 +560,45 @@ def get_solution_actual_cost(soln: list):
 '''
 Function is to find total distance for solution without pickup/delivery time
 '''
+
+
 def get_distance_for_solution(soln: list):
-    d=0
-    distance=[]
+    d = 0
+    distance = []
     for route in soln:
-        prev=0
+        prev = 0
         for customer in route[1:]:
             d += get_distance(prev, customer)
-            prev=customer
+            prev = customer
         distance.append(d)
-        d=0
+        d = 0
     return distance
-
 
 
 '''
 Tabu search driver method
 '''
+
+
 def tabu_search(routes: list, itrations):
-    best_solution_ever=routes
-    best_cost_ever=get_solution_actual_cost(routes)
+    best_solution_ever = routes
+    best_cost_ever = get_solution_actual_cost(routes)
     best_solution_ever_not_chaned_itr_count = 0
     best_soln = routes
     best_cost = ()
-    tmp12=[]
+    tmp12 = []
     global tabu_list
     for i in range(itrations - 1):
-        tmp12=[]
+        tmp12 = []
         if best_solution_ever_not_chaned_itr_count > 7:
             break
         tmp12.append(get_neighbours(1, best_soln))
         tmp12.append(get_neighbours(3, best_soln))
-        tmp11=get_neighbours(2, best_soln)
+        tmp11 = get_neighbours(2, best_soln)
         if not tmp11 == -1:
             tmp12.append(tmp11)
         tmp12.sort(key=lambda x: x[1][-1])
-        if tmp12[1] == -1  or tmp12[0] == -1:
+        if tmp12[1] == -1 or tmp12[0] == -1:
             break
         best_soln = tmp12[0][0]
         best_cost = tmp12[0][1]
@@ -586,14 +608,14 @@ def tabu_search(routes: list, itrations):
             best_cost_ever = best_cost
             best_solution_ever = best_soln
         else:
-            best_solution_ever_not_chaned_itr_count +=1
+            best_solution_ever_not_chaned_itr_count += 1
         print("best solution so far {0}".format(best_soln))
         iteration_update_tabu_list()
 
     return best_solution_ever, best_cost_ever
 
 
-#------------- input provider methods-----------------------------------------------------------------
+# ------------- input provider methods-----------------------------------------------------------------
 def get_distance(src, dest):
     return distance_mtrx[src][dest]
 
@@ -602,25 +624,8 @@ def get_pickup_time(cust):
     return pickup_delivery_time_in[cust][0]
 
 
-def get_delivery_time(cust):
-    return pickup_delivery_time_in[cust][1]
-
-
-def get_earliest_service_time(cust):
-    return service_time_in[cust][0]
-
-
 def get_latest_service_time(cust):
     return service_time_in[cust][1]
-
-
-def get_service_start_time(cust, prev_cust_service_start_time, prev_cust):
-    time_distance = prev_cust_service_start_time + get_delivery_time(prev_cust) + get_pickup_time(
-        prev_cust) + get_distance(prev_cust, cust)
-    if time_distance > get_earliest_service_time(cust):
-        return time_distance
-    else:
-        return get_earliest_service_time(cust)
 
 
 def is_empty_route(route: list):
@@ -644,13 +649,14 @@ def read_input_file(filename):
             set_input(i, parse_line_to_list(line))
             i += 1
         set_input(i, int(lines[-3]))
-        set_input(i+1, int(lines[-2]))
+        set_input(i + 1, int(lines[-2]))
         set_input(i + 1, int(lines[-1]))
+
 
 def parse_line_to_list(line):
     ret = []
     str = line[2:-3]
-    #print(str)
+    # print(str)
     for in1 in str.split(']['):
         tmp = []
         for i in in1.split(','):
@@ -680,7 +686,8 @@ def set_input(inp, value):
         global aspiration
         aspiration = value
 
-#-----------------end ---------input provider methods---------------------------------------------------------
+
+# -----------------end ---------input provider methods---------------------------------------------------------
 
 class TabuListClass:
     def __init__(self, op, move, valid_for):
@@ -706,12 +713,14 @@ class TabuListClass:
 to check current move against tabu list if not available in tabu list then move is allowed otherwise not allowed
 function also check for aspiration criteria
 '''
+
+
 def is_move_allowed(move, soln_prev, soln_curr, op):
     if len(tabu_list) < 1:
         return True
     cost_prev = get_solution_actual_cost(soln_prev)[-1]
     cost_curr = get_solution_actual_cost(soln_curr)[-1]
-    if cost_prev-cost_curr > aspiration:
+    if cost_prev - cost_curr > aspiration:
         return not contains(tabu_list, lambda x: x.find(move, True, op))
     else:
         return not contains(tabu_list, lambda x: x.find(move, False, op))
@@ -720,28 +729,33 @@ def is_move_allowed(move, soln_prev, soln_curr, op):
 '''
 to update tabu list iteration wise
 '''
+
+
 def iteration_update_tabu_list():
     for i in tabu_list:
         if i.checked() < 0:
             tabu_list.remove(i)
 
-#utility function to print 2d array linewise rows
+
+# utility function to print 2d array linewise rows
 def print2D(arr):
     for row in arr:
         print(row)
+
 
 # log utility method
 def print_log(log):
     if logging:
         print(log)
 
+
 # log = open("myprog.log", "a")
 # sys.stdout = log
 
-#read_input_file("vrptw_test_4_nodes.txt")
+# read_input_file("vrptw_test_4_nodes.txt")
 routes = get_initial_solution()
 print("Best solution: {0}".format(routes))
-#routes.remove([])
+# routes.remove([])
 best_soln, best_cost = tabu_search(routes, tabu_itrs)
 print("solution is : {0} with costs : {1}".format(best_soln, best_cost))
 best_cost = get_solution_actual_cost(best_soln)
@@ -750,7 +764,7 @@ for route in best_soln:
     print("Route{0} is: {1}".format(index1, route))
     index1 += 1
 
-distance, delay, wait, cost,serviced,unserviced,details=get_solution_cost(best_soln)
+distance, delay, wait, cost, serviced, unserviced, details = get_solution_cost(best_soln)
 
 print("total distance: {0}".format(distance))
 print("total waiting: {0}".format(wait))
